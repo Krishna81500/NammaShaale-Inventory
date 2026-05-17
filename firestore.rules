@@ -1,0 +1,95 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() { return request.auth != null; }
+    function isVerified() { return isSignedIn() && request.auth.token.email_verified == true; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    
+    // --- Entity Validations ---
+    function isValidAsset(data) {
+      return data.keys().hasAll(['name', 'category', 'condition']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.category in ['Sports', 'Lab', 'IT', 'Classroom', 'Furniture', 'Medical', 'Other'] &&
+             data.condition in ['Working', 'Needs Repair', 'Broken', 'Lost'] &&
+             (!('serialNumber' in data) || (data.serialNumber is string && data.serialNumber.size() <= 100)) &&
+             (!('photoUrl' in data) || (data.photoUrl is string && data.photoUrl.size() <= 1000)) &&
+             (!('description' in data) || (data.description is string && data.description.size() <= 1000)) &&
+             (!('repairHint' in data) || (data.repairHint is string && data.repairHint.size() <= 1000)) &&
+             (!('estimatedRepairCost' in data) || (data.estimatedRepairCost is number)) &&
+             (!('addedAt' in data) || (data.addedAt is timestamp)) &&
+             (!('lastCheckedAt' in data) || (data.lastCheckedAt is timestamp));
+    }
+
+    function isValidHealthCheck(data) {
+      return data.keys().hasAll(['assetId', 'condition', 'timestamp', 'auditorName']) &&
+             isValidId(data.assetId) &&
+             data.condition in ['Working', 'Needs Repair', 'Broken', 'Lost'] &&
+             data.timestamp is timestamp &&
+             data.auditorName is string && data.auditorName.size() > 0 &&
+             (!('auditorPhone' in data) || data.auditorPhone is string) &&
+             (!('auditorAddress' in data) || data.auditorAddress is string) &&
+             (!('auditorPosition' in data) || data.auditorPosition is string) &&
+             (!('notes' in data) || (data.notes is string && data.notes.size() <= 1000)) &&
+             (!('photoUrl' in data) || (data.photoUrl is string && data.photoUrl.size() <= 1000)) &&
+             (!('checkedBy' in data) || (data.checkedBy is string));
+    }
+
+    function isValidIssueLog(data) {
+      return data.keys().hasAll(['assetId', 'issueType', 'date']) &&
+             isValidId(data.assetId) &&
+             data.issueType in ['Lost', 'Damaged', 'Stolen', 'Malfunctioning'] &&
+             data.date is timestamp &&
+             (!('description' in data) || (data.description is string && data.description.size() <= 1000));
+    }
+
+    // --- Collections ---
+
+    // 1. Assets
+    match /assets/{assetId} {
+      allow read: if isSignedIn();
+      allow create: if isVerified() && isValidAsset(incoming());
+      allow update: if isVerified() && isValidAsset(incoming()) && (
+        // Action: Normal Update (Everything except potentially immutable fields)
+        (incoming().diff(existing()).affectedKeys().hasOnly(['name', 'category', 'condition', 'serialNumber', 'photoUrl', 'description', 'lastCheckedAt']))
+      );
+      allow delete: if isVerified(); // In a real app, maybe only Admins can delete
+    }
+
+    // 2. Health Checks
+    match /health_checks/{checkId} {
+      allow read: if isSignedIn();
+      allow create: if isVerified() && isValidHealthCheck(incoming()) && 
+                    exists(/databases/$(database)/documents/assets/$(incoming().assetId));
+      // Health checks are typically immutable once written
+      allow update, delete: if false; 
+    }
+
+    // 3. Issue Logs
+    match /issue_logs/{logId} {
+      allow read: if isSignedIn();
+      allow create: if isVerified() && isValidIssueLog(incoming()) &&
+                    exists(/databases/$(database)/documents/assets/$(incoming().assetId));
+      allow update, delete: if false;
+    }
+
+    // 4. Members
+    match /members/{memberId} {
+      allow read: if isSignedIn();
+      allow write: if isVerified();
+    }
+
+    // 5. Users (Private Profiles)
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+  }
+}

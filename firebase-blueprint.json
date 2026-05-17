@@ -1,0 +1,89 @@
+{
+  "entities": {
+    "asset": {
+      "title": "School Asset",
+      "description": "Represents an item in the school inventory like sports kit, lab equipment, or electronics.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string", "description": "Name of the asset (e.g., Football, Microscope)" },
+        "category": { "type": "string", "enum": ["Sports", "Lab", "IT", "Classroom", "Furniture", "Medical", "Other"] },
+        "serialNumber": { "type": "string" },
+        "condition": { "type": "string", "enum": ["Working", "Needs Repair", "Broken", "Lost"] },
+        "photoUrl": { "type": "string", "format": "uri" },
+        "lastCheckedAt": { "type": "string", "format": "date-time" },
+        "addedAt": { "type": "string", "format": "date-time" },
+        "description": { "type": "string" },
+        "repairHint": { "type": "string" },
+        "estimatedRepairCost": { "type": "number" }
+      },
+      "required": ["name", "category", "condition"]
+    },
+    "healthCheck": {
+      "title": "Monthly Health Check",
+      "description": "A record of an asset's condition during a periodic audit.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "assetId": { "type": "string" },
+        "condition": { "type": "string", "enum": ["Working", "Needs Repair", "Broken", "Lost"] },
+        "notes": { "type": "string" },
+        "photoUrl": { "type": "string", "format": "uri" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "checkedBy": { "type": "string" },
+        "auditorName": { "type": "string" },
+        "auditorPhone": { "type": "string" },
+        "auditorAddress": { "type": "string" },
+        "auditorPosition": { "type": "string" }
+      },
+      "required": ["assetId", "condition", "timestamp", "auditorName"]
+    },
+    "issueLog": {
+      "title": "Issue Log",
+      "description": "A log for specific incidents like loss or damage.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "assetId": { "type": "string" },
+        "issueType": { "type": "string", "enum": ["Lost", "Damaged", "Stolen", "Malfunctioning"] },
+        "description": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" }
+      },
+      "required": ["assetId", "issueType", "date"]
+    }
+  },
+  "firestore": {
+    "assets": {
+      "schema": "asset",
+      "description": "Collection of school assets."
+    },
+    "health_checks": {
+      "schema": "healthCheck",
+      "description": "Historical health check records."
+    },
+    "issue_logs": {
+      "schema": "issueLog",
+      "description": "Log of issues and incidents."
+    },
+    "members": {
+      "schema": {
+        "title": "Staff Member",
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "staffId": { "type": "string" },
+          "position": { "type": "string" },
+          "phoneNumber": { "type": "string" },
+          "address": { "type": "string" },
+          "email": { "type": "string" },
+          "attendanceStatus": { "type": "string", "enum": ["Present", "Absent", "On Leave"] },
+          "lastActive": { "type": "string", "format": "date-time" },
+          "bio": { "type": "string" },
+          "responsibilities": { "type": "string" }
+        },
+        "required": ["name", "staffId", "position"]
+      },
+      "description": "Collection of school staff and inventory members."
+    }
+  }
+}

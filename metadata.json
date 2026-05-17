@@ -1,0 +1,6 @@
+{
+  "name": "Namma-Shaale Inventory",
+  "description": "A digital asset auditor for schools to track and maintain sports kits, lab equipment, and tablets.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": []
+}
